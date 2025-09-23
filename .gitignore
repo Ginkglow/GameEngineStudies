@@ -1,0 +1,7 @@
+# Ignore builds
+*.exe
+
+# Ignore libraries
+library/*
+
+.vscode/
