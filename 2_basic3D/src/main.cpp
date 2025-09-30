@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <filesystem>
+#include "gameManager.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
@@ -25,7 +26,7 @@ const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 // camera
-Camera camera(glm::vec3(0.0f, 3.0f, -5.0f), glm::vec3(0.0f, 1.0f, 0.0f), 90.0f, -25.0f);
+Camera camera(glm::vec3(0.0f, 4.8f, -5.0f), glm::vec3(0.0f, 1.0f, 0.0f), 90.0f, -40.0f);
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -36,6 +37,13 @@ float lastFrame = 0.0f;
 
 // lighting
 glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+
+// gaming
+GameManager gm = GameManager();
+bool moving = false;
+// positions of the player and point light
+glm::vec3 playerPosition = glm::vec3( 0.0, 0.125, -8/6.0f );
+glm::vec3 targetPosition = playerPosition;
 
 int main()
 {
@@ -132,14 +140,14 @@ int main()
     };
     // positions all containers
     glm::vec3 cubePositions[] = {
-        glm::vec3( 0.0, -0.1, 1.7495 ),     //goal
         glm::vec3( 0.0, -0.1, 0.0 ),        //ground
+        glm::vec3( 0.0, -0.1, 1.7495 ),     //goal
         /*====== SCENE ======*/
         glm::vec3( 1.75, 0.0, -0.1 ),
-        glm::vec3( -0.0, 0.0, -1.65 ),
+        glm::vec3( 0.0, 0.0, -1.65 ),
         glm::vec3( 1.0, 0.5, 1.75 ),
-        glm::vec3( -0.0, 1.9, 1.75 ),
-        glm::vec3( -0.0, 2.0, 1.75 ),
+        glm::vec3( 0.0, 1.9, 1.75 ),
+        glm::vec3( 0.0, 2.0, 1.75 ),
         glm::vec3( 0.5, 1.25, 1.75 ),
         glm::vec3( -1.75, 0.0, -0.1 ),
         glm::vec3( 1.1, 0.1, 1.75 ),
@@ -155,11 +163,11 @@ int main()
         glm::vec3( 4/6.0f, 0.05, 4/6.0f ),
         glm::vec3( 7/6.0f, 0.1, 1.15 ),
         glm::vec3( -1.0, 0.1, -1.0 ),
-        glm::vec3( -0.0, 0.3, 0.0 ),
+        glm::vec3( 0.0, 0.3, 0.0 ),
         glm::vec3( 1.0, 0.1, -4/6.0f ),
         glm::vec3( -8/6.0f, 0.1, -0.15 ),
         glm::vec3( -5/6.0f, 0.1, 4/6.0f ),
-        glm::vec3( -0.0, 0.9, 0.0 ),
+        glm::vec3( 0.0, 0.9, 0.0 ),
         glm::vec3( -1.45, 0.31, -0.92 ),
         glm::vec3( 1.75, 0.3, -0.15 ),
         glm::vec3( 1.0, 0.1, 1.0 ),
@@ -183,8 +191,8 @@ int main()
     };
 
     glm::vec3 cubeScales[] = {
-        glm::vec3( 0.5, 0.2, 0.5 ),
         glm::vec3( 3.0, 0.2, 3.0 ),
+        glm::vec3( 0.5, 0.2, 0.5 ),
         /*====== SCENE ======*/
         glm::vec3( 0.5, 0.4, 3.5 ),
         glm::vec3( 3.0, 0.3, 0.3 ),
@@ -216,10 +224,7 @@ int main()
         glm::vec3( 0.22, 0.2, 0.25 ),
         glm::vec3( 0.2, 0.2, 0.2 )
     };
-    // positions of the point lights
-    glm::vec3 pointLightPositions[] = {
-        glm::vec3( 0.0, 0.125, -8/6.0f )
-    };
+
     // first, configure the cube's VAO (and VBO)
     unsigned int VBO, cubeVAO;
     glGenVertexArrays(1, &cubeVAO);
@@ -250,6 +255,7 @@ int main()
     // ---------------------------------------------------------------------------
     std::string currentPath = std::filesystem::current_path().parent_path().string();
     unsigned int diffuseMap = loadTexture((currentPath + "\\res\\container2.png").c_str());
+    unsigned int board_diffuseMap = loadTexture((currentPath + "\\res\\board.png").c_str());
     unsigned int specularMap = loadTexture((currentPath + "\\res\\container2_specular.png").c_str());
 
     // shader configuration
@@ -294,7 +300,7 @@ int main()
         lightingShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
         lightingShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
         // point light
-        lightingShader.setVec3("pointLights.position", pointLightPositions[0]);
+        lightingShader.setVec3("pointLights.position", playerPosition);
         lightingShader.setVec3("pointLights.ambient", 0.05f, 0.05f, 0.05f);
         lightingShader.setVec3("pointLights.diffuse", 0.8f, 0.8f, 0.8f);
         lightingShader.setVec3("pointLights.specular", 1.0f, 1.0f, 1.0f);
@@ -314,7 +320,7 @@ int main()
 
         // bind diffuse map
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffuseMap);
+        glBindTexture(GL_TEXTURE_2D, board_diffuseMap);
         // bind specular map
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, specularMap);
@@ -322,7 +328,17 @@ int main()
         // render containers
         glBindVertexArray(cubeVAO);
 
-        for (unsigned int i = 0; i < 17; i++)
+        glm::mat4 ground_model = glm::mat4(1.0f);
+        ground_model = glm::translate(ground_model, cubePositions[0]);
+        ground_model = glm::scale(ground_model, cubeScales[0]);
+        lightingShader.setMat4("model", ground_model);
+
+        glDrawArrays(GL_TRIANGLES, 30, 6);
+
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, diffuseMap);
+
+        for (unsigned int i = 1; i < 17; i++)
         {
             // calculate the model matrix for each object and pass it to shader before drawing
             glm::mat4 model = glm::mat4(1.0f);
@@ -345,6 +361,17 @@ int main()
             glDrawArrays(GL_TRIANGLES, 0, 36);
         }
 
+        glm::vec3 direction = glm::normalize(targetPosition - playerPosition);
+        float distanceRemaining = glm::length(targetPosition - playerPosition);
+
+        float distanceToMove = 1.2 * deltaTime;
+        if (distanceToMove >= distanceRemaining) {
+            playerPosition = targetPosition;
+            moving = false;
+        } else {
+            playerPosition += direction * distanceToMove;
+        }
+
         // also draw the lamp object(s)
         lightCubeShader.use();
         lightCubeShader.setMat4("projection", projection);
@@ -354,7 +381,7 @@ int main()
         glBindVertexArray(lightCubeVAO);
         
         model = glm::mat4(1.0f);
-        model = glm::translate(model, pointLightPositions[0]);
+        model = glm::translate(model, playerPosition);
         model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f)); // Make it a smaller cube
         lightCubeShader.setMat4("model", model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -385,14 +412,37 @@ void processInput(GLFWwindow *window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    
+    if(!moving && !gm.gameEnd) {
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            gm.up();
+            targetPosition.z = -(gm.getPy()-5)*(1.0/3.0f);
+            moving = true;
+        }
+        else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            gm.down();
+            targetPosition.z = -(gm.getPy()-5)*(1.0/3.0f);
+            moving = true;
+        }
+        else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            gm.left();
+            targetPosition.x = -((gm.getPx()-5)*(1.0/3.0f));
+            moving = true;
+        }
+        else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            gm.right();
+            targetPosition.x = -((gm.getPx()-5)*(1.0/3.0f));
+            moving = true;
+        }
+    }
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
         camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
         camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
         camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         camera.ProcessKeyboard(RIGHT, deltaTime);
 }
 
