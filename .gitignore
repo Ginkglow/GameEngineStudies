@@ -5,3 +5,7 @@
 library/*
 
 .vscode/
+
+# Ignore models
+*/res/model
+*/res/animation
